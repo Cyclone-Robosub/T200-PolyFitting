@@ -10,39 +10,25 @@ class PolyFit:
         self.filename = filename
         self.data = self.extract_force_pwm_voltage()
 
-
     def extract_force_pwm_voltage(self):
-
         xls = pd.ExcelFile(self.filename)
         sheet_names = xls.sheet_names
 
-        # Initialize an empty list to store data
         data_list = []
 
-        # Process each voltage sheet (excluding the "READ ME FIRST" sheet)
         for sheet in sheet_names:
             if sheet != "READ ME FIRST":
                 df = pd.read_excel(xls, sheet_name=sheet)
-
-                # Strip spaces from column names
                 df.columns = df.columns.str.strip()
-
-                # Extract relevant columns
                 pwm = df["PWM (µs)"].values
                 pwm = [value - 1500 for value in pwm]
                 force = df["Force (Kg f)"].values
-                voltage = np.full_like(pwm, float(sheet.split()[0]))  # Extract voltage from sheet name
-
-                # Append data as tuples
+                voltage = np.full_like(pwm, float(sheet.split()[0]))
                 data_list.extend(zip(force, pwm, voltage))
 
-        # Convert to structured NumPy array
         dtype = [("force", "f4"), ("pwm", "i4"), ("voltage", "f4")]
         structured_array = np.array(data_list, dtype=dtype)
-
         return structured_array
-
-
 
     def polynomial_model(self, X,
                          a, b, c, d, e,
@@ -52,12 +38,9 @@ class PolyFit:
                          w, x, y, z, aa,
                          ab, ac, ad, ae, af,
                          ag, ah, ak, al, am,
-                         an, ao, ap, aq, ar
-                         ):
+                         an, ao, ap, aq, ar):
 
         V, P = X
-
-
         coefs = [a, b, c, d, e,
                  f, g, h, k, l,
                  m, n, o, p, q,
@@ -74,23 +57,83 @@ class PolyFit:
                 terms.append(P**i * V**j)
         for i in range(num_coefs - len(terms)):
             terms.append(0)
-
         return sum([terms[i] * coefs[i] for i in range(num_coefs)])
 
-    def fit_polynomial_model_2(self):
+    def evaluate_piecewise_force(self, V, P, coefficients):
+        P = np.array(P)
+        V = np.array(V)
+        output = np.zeros_like(P, dtype=float)
+        mask = P >= 40
+        output[mask] = self.polynomial_model((V[mask], P[mask]), *coefficients)
+        return output
 
-        # Extract variables
+    def evaluate_piecewise_force_lower(self, V, P, coefficients):
+        P = np.array(P)
+        V = np.array(V)
+        output2 = np.zeros_like(P, dtype=float)
+        mask = P <= -40
+        output2[mask] = self.polynomial_model((V[mask], P[mask]), *coefficients)
+        return output2
+
+    def fit_polynomial_model_2(self):
         F = self.data["force"]
         V = self.data["voltage"]
         P = self.data["pwm"]
 
-        # Fit model using non-linear least squares
+        mask = (P >= 40) & (P <= 400)
+        F = F[mask]
+        V = V[mask]
+        P = P[mask]
+
+        voltages = np.unique(V)
+        anchor_P = np.full_like(voltages, 40)
+        anchor_F = np.zeros_like(voltages)
+
+        V = np.concatenate((V, voltages))
+        P = np.concatenate((P, anchor_P))
+        F = np.concatenate((F, anchor_F))
+
+        popt, _ = curve_fit(self.polynomial_model, (V, P), F)
+        return popt
+
+    def fit_polynomial_model_lower(self):
+        F = self.data["force"]
+        V = self.data["voltage"]
+        P = self.data["pwm"]
+
+        mask = (P <= -40) & (P >= -400)
+        F = F[mask]
+        V = V[mask]
+        P = P[mask]
+
+        voltages = np.unique(V)
+        anchor_P = np.full_like(voltages, -40)
+        anchor_F = np.zeros_like(voltages)
+
+        V = np.concatenate((V, voltages))
+        P = np.concatenate((P, anchor_P))
+        F = np.concatenate((F, anchor_F))
+
         popt, _ = curve_fit(self.polynomial_model, (V, P), F)
         return popt
 
 
-    def plot_absolute_error(self, coefficients):
 
+    def evaluate_force_full_range(self, V, P, coeffs_main, coeffs_lower):
+        P = np.array(P)
+        V = np.array(V)
+        output = np.zeros_like(P, dtype=float)
+
+        mask_lower = P <= -40
+        mask_main = P >= 40
+
+        output[mask_lower] = self.polynomial_model((V[mask_lower], P[mask_lower]), *coeffs_lower)
+        output[mask_main] = self.polynomial_model((V[mask_main], P[mask_main]), *coeffs_main)
+
+        # Everything in between stays 0
+        return output
+
+    def plot_absolute_error(self, coefficients, coefficientsLower):
         data = self.data
         plt.figure(figsize=(12, 8))
         unique_voltages = np.unique(data["voltage"])
@@ -98,7 +141,7 @@ class PolyFit:
             subset = data[data["voltage"] == V]
             P = subset["pwm"]
             F_actual = subset["force"]
-            F_predicted = self.polynomial_model((V, P), *coefficients)
+            F_predicted = self.evaluate_force_full_range(subset["voltage"], P, coefficients, coefficientsLower)
             abs_error = np.abs(F_actual - F_predicted)
             plt.plot(P, abs_error, label=f"{V} V")
 
@@ -109,11 +152,7 @@ class PolyFit:
         plt.grid()
         plt.show()
 
-
-    def plot_relative_error(self, coefficients):
-        """
-        Plots the relative error at each voltage.
-        """
+    def plot_relative_error(self, coefficients, coefficientsLower):
         data = self.data
         plt.figure(figsize=(12,8))
         unique_voltages = np.unique(data["voltage"])
@@ -121,7 +160,7 @@ class PolyFit:
             subset = data[data["voltage"] == V]
             P = subset["pwm"]
             F_actual = subset["force"]
-            F_predicted = self.polynomial_model((V, P), *coefficients)
+            F_predicted = self.evaluate_force_full_range(subset["voltage"], P, coefficients, coefficientsLower)
             rel_error = np.abs((F_actual - F_predicted) / F_actual)
             plt.plot(P, rel_error, label=f"{V} V")
 
@@ -132,20 +171,19 @@ class PolyFit:
         plt.grid()
         plt.show()
 
-
-
-
-
-    def plot_actual_vs_modeled(self, coefficients):
-
+    def plot_actual_vs_modeled(self, coeffs_below=None, coeffs_above=None):
         data = self.data
         unique_voltages = np.unique(data["voltage"])
         for V in unique_voltages[:5]:
             subset = data[data["voltage"] == V]
             P = subset["pwm"]
             F_actual = subset["force"]
-            F_predicted = self.polynomial_model((subset["voltage"], P), *coefficients)
+            V_vals = subset["voltage"]
 
+            if coeffs_below is not None and coeffs_above is not None:
+                F_predicted = self.evaluate_force_full_range(V_vals, P, coeffs_below, coeffs_above)
+            else:
+                F_predicted = self.evaluate_force_full_range(V_vals, P, coeffs_below, coeffs_above)
 
             plt.figure(figsize=(8, 5))
             plt.plot(P, F_actual, label="Actual Force", linestyle='dashed')
@@ -157,37 +195,23 @@ class PolyFit:
             plt.grid()
             plt.show()
 
-            # plt.figure()
-            # plt.plot(P, F_actual, "bo", label="Actual Force")
-            # plt.plot(P, F_predicted, "r-", label="Modeled Force")
-            # plt.xlabel("PWM (µs)")
-            # plt.ylabel("Force (Kg f)")
-            # plt.title(f"Actual vs Modeled Force at {V}V")
-            # plt.legend()
-            # plt.show()
-
-
     def test_model_mse(self, coefficients):
-        # Extract variables
         data = self.data
         F_actual = data["force"]
         V = data["voltage"]
         P = data["pwm"]
-
-        # Predict force using the model
-        F_predicted = self.polynomial_model((V, P), *coefficients)
+        F_predicted = self.evaluate_force_full_range(V, P, coefficients, coefficientsLower)
         print(coefficients)
-
-        self.plot_absolute_error(coefficients)
-        self.plot_relative_error(coefficients)
-        self.plot_actual_vs_modeled(coefficients)
-        # Compute and return MSE
+        self.plot_absolute_error(coefficients, coefficientsLower)
+        self.plot_relative_error(coefficients, coefficientsLower)
+        self.plot_actual_vs_modeled(coefficients, coefficientsLower)
         return mean_squared_error(F_actual, F_predicted)
 
 file_path = "T200-Public-Performance-Data-10-20V-September-2019.xlsx"
 
 pf = PolyFit(file_path)
 coefficients = pf.fit_polynomial_model_2()
+coefficientsLower = pf.fit_polynomial_model_lower()
 print(f"MSE: {pf.test_model_mse(coefficients)}\n")
 
 terms = []
@@ -200,3 +224,13 @@ for i in range(len(terms)):
     print(f"{coefficients[i]} {terms[i]}")
 
 
+
+terms = [f"(P^{i})(V^{j})" for i in range(4) for j in range(4)]
+
+print("\nCoefficients for P >= 40 (Upper Region):")
+for i, t in enumerate(terms):
+    print(f"{coefficients[i]} {t}")
+
+print("\nCoefficients for P <= -40 (Lower Region):")
+for i, t in enumerate(terms):
+    print(f"{coefficientsLower[i]} {t}")
