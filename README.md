@@ -31,6 +31,6 @@ force = 0
 Images:
 ### Force from PWM and Voltage (3D)
 
-![Force Surface](force_from_pwm_v_3d.png)
+![Force Surface]((https://github.com/Cyclone-Robosub/T200-PolyFitting/blob/main/Force%20from%20PWM%20and%20V%203D.png?raw=true))
 
 [Download MATLAB `.fig`](pwm_voltage_to_force_3d.fig)
