@@ -27,3 +27,10 @@ force = - 2.2103591356566494 + 0.5020761226661944 * V - 0.038894245021323104 * V
 -40 < P < 40
 force = 0
 ```
+
+Images:
+### Force from PWM and Voltage (3D)
+
+![Force Surface](force_from_pwm_v_3d.png)
+
+[Download MATLAB `.fig`](pwm_voltage_to_force_3d.fig)
