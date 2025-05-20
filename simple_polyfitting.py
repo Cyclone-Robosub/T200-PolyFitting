@@ -63,7 +63,7 @@ class PolyFit:
         P = np.array(P)
         V = np.array(V)
         output = np.zeros_like(P, dtype=float)
-        mask = P >= 40
+        mask = P >= 28
         output[mask] = self.polynomial_model((V[mask], P[mask]), *coefficients)
         return output
 
@@ -71,7 +71,7 @@ class PolyFit:
         P = np.array(P)
         V = np.array(V)
         output2 = np.zeros_like(P, dtype=float)
-        mask = P <= -40
+        mask = P <= -28
         output2[mask] = self.polynomial_model((V[mask], P[mask]), *coefficients)
         return output2
 
@@ -80,13 +80,13 @@ class PolyFit:
         V = self.data["voltage"]
         P = self.data["pwm"]
 
-        mask = (P >= 40) & (P <= 400)
+        mask = (P >= 28) & (P <= 400)
         F = F[mask]
         V = V[mask]
         P = P[mask]
 
         voltages = np.unique(V)
-        anchor_P = np.full_like(voltages, 40)
+        anchor_P = np.full_like(voltages, 28)
         anchor_F = np.zeros_like(voltages)
 
         V = np.concatenate((V, voltages))
@@ -101,13 +101,13 @@ class PolyFit:
         V = self.data["voltage"]
         P = self.data["pwm"]
 
-        mask = (P <= -40) & (P >= -400)
+        mask = (P <= -28) & (P >= -400)
         F = F[mask]
         V = V[mask]
         P = P[mask]
 
         voltages = np.unique(V)
-        anchor_P = np.full_like(voltages, -40)
+        anchor_P = np.full_like(voltages, -28)
         anchor_F = np.zeros_like(voltages)
 
         V = np.concatenate((V, voltages))
@@ -124,8 +124,8 @@ class PolyFit:
         V = np.array(V)
         output = np.zeros_like(P, dtype=float)
 
-        mask_lower = P <= -40
-        mask_main = P >= 40
+        mask_lower = P <= -28
+        mask_main = P >= 28
 
         output[mask_lower] = self.polynomial_model((V[mask_lower], P[mask_lower]), *coeffs_lower)
         output[mask_main] = self.polynomial_model((V[mask_main], P[mask_main]), *coeffs_main)
@@ -227,10 +227,10 @@ for i in range(len(terms)):
 
 terms = [f"(P^{i})(V^{j})" for i in range(4) for j in range(4)]
 
-print("\nCoefficients for P >= 40 (Upper Region):")
+print("\nCoefficients for 16V zero band P >= 28 (Upper Region):")
 for i, t in enumerate(terms):
     print(f"{coefficients[i]} {t}")
 
-print("\nCoefficients for P <= -40 (Lower Region):")
+print("\nCoefficients for 16V zero band P <= -28 (Lower Region):")
 for i, t in enumerate(terms):
     print(f"{coefficientsLower[i]} {t}")
