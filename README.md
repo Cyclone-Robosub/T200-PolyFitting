@@ -8,11 +8,11 @@ error. Plots of the error, polyfit at each voltage, and the plot of the actual v
 
 The coefficients are taken from the Python function and put into a function centered at 1500. This MATLAB function can then take a value for voltage and PWM to output a
 corresponding force value, with piecewise components based on the PWM (created as an upper and lower index for the function, including an index between -40 and 40 for the
-zeroband). The base function is below, and the 3D plot is found below.
+zeroband for 12V, and -28 to 28 for 16V). The base function is below, and the 3D plot is found below.
 
 
 
-**Function for Voltage V and PWM Centered at 1500 P:**
+**Function for Voltage V and PWM Centered at 1500 P (Using 12V Zero Band):**
 ```
 P < -40
 force = 0.18450859598294592 - 0.03877245224750089 * V + 0.00437326839182978 * V^2 - 0.00014159192815009454 * V^3 + 0.0047430745735151875 * P - 0.0011779727652119001 * P * V
