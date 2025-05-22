@@ -10,7 +10,9 @@ The coefficients are taken from the Python function and put into a function cent
 corresponding force value, with piecewise components based on the PWM (created as an upper and lower index for the function, including an index between -40 and 40 for the
 zeroband for 12V, and -28 to 28 for 16V). The base function is below, and the 3D plot is found below.
 
+MSE for 16V: 0.0007741950422248906
 
+MSE for 10V (Largest 0 band) = 0.0007903323001878588
 
 **Function for Voltage V and PWM Centered at 1500 P (Using 12V Zero Band):**
 ```
