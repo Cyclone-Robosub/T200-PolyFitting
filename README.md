@@ -12,7 +12,7 @@ zeroband for 12V, and -28 to 28 for 16V). The base function is below, and the 3D
 
 MSE for 16V: 0.0007741950422248906
 
-MSE for 10V (Largest 0 band) = 0.0007903323001878588
+MSE for 10V (Largest 0 band): 0.0007903323001878588
 
 **Function for Voltage V and PWM Centered at 1500 P (Using 12V Zero Band):**
 ```
